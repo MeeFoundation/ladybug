@@ -1,7 +1,10 @@
 //! The vector extension is linked into the engine: an HNSW index is made and
 //! searched with nothing installed or loaded at run time.
 
-use lbug::{Connection, Database, LogicalType, SystemConfig, Value};
+// Through the harness crate, not `lbug` directly: the harness links the
+// extension's archive (build.rs), and a crate the test does not name is left
+// out of the link, its native libraries with it.
+use lbug_harness::lbug::{Connection, Database, LogicalType, SystemConfig, Value};
 
 fn floats(v: &[f32]) -> Value {
     Value::Array(LogicalType::Float, v.iter().map(|x| Value::Float(*x)).collect())

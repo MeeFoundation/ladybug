@@ -25,10 +25,12 @@ if [ "$(git -C "$out/extension" rev-parse HEAD 2>/dev/null || true)" != "$EXTENS
   git -C "$out/extension" checkout -q FETCH_HEAD
 fi
 
-printf '%s\n' \
-  '# Written by scripts/assemble-source.sh: the vector extension linked into the engine, no other built.' \
-  'add_static_link_extension(vector)' \
-  > "$out/extension/extension_config.cmake"
+# Written only when it differs: a rewrite alone makes CMake build everything again.
+config='# Written by scripts/assemble-source.sh: the vector extension linked into the engine, no other built.
+add_static_link_extension(vector)'
+if [ "$(cat "$out/extension/extension_config.cmake" 2>/dev/null)" != "$config" ]; then
+  printf '%s\n' "$config" > "$out/extension/extension_config.cmake"
+fi
 
 # The extensions' CMake writes an extension's archive into the source tree,
 # where one target's build overwrites another's: into the build's own
