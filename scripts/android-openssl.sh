@@ -13,7 +13,9 @@ fi
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
 mkdir -p "$work/src"
-cat > "$work/Cargo.toml" <<'TOML'
+# openssl-sys builds the vendored OpenSSL; openssl-src, named directly, holds
+# it at the version pins.env names.
+cat > "$work/Cargo.toml" <<TOML
 [package]
 name = "android-openssl"
 version = "0.0.0"
@@ -21,9 +23,10 @@ edition = "2021"
 publish = false
 [dependencies]
 openssl-sys = { version = "0.9", features = ["vendored"] }
+openssl-src = "=$OPENSSL_SRC_VERSION"
 [workspace]
 TOML
-echo 'fn main() { println!("{}", openssl_sys::OPENSSL_VERSION_NUMBER); }' > "$work/src/main.rs"
+echo 'use openssl_sys as _; fn main() {}' > "$work/src/main.rs"
 cp "$root/harness/rust-toolchain.toml" "$work/"
 (cd "$work" && cargo ndk -t arm64-v8a -P "$ANDROID_API" build --release)
 built=$(find "$work/target" -path "*openssl-build/install" -type d | head -1)

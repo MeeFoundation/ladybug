@@ -15,7 +15,8 @@ jobs:
   build:
     name: Build ${{ matrix.target }}
     strategy:
-      fail-fast: true
+      # Every target runs to the end, so one failure does not hide another's.
+      fail-fast: false
       matrix:
         include:
           - target: x86_64-unknown-linux-gnu

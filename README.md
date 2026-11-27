@@ -16,7 +16,7 @@ LBUG_GITHUB_REPOSITORY = "MeeFoundation/ladybug"
 LBUG_VERSION = "0.22.1-mee.1"
 ```
 
-The `lbug` crate's build script downloads the archive for the build machine and links it. A build for Android sets `LBUG_LIBRARY_DIR` and `LBUG_INCLUDE_DIR` to the unpacked `liblbug-static-android-arm64.tar.gz` instead, since the crate picks an archive by the build machine.
+The `lbug` crate's build script downloads the archive for the build machine and links it. A build for Android sets `LBUG_LIBRARY_DIR`, `LBUG_INCLUDE_DIR` and `OPENSSL_DIR` to the unpacked `liblbug-static-android-arm64.tar.gz` instead, since the crate picks an archive by the build machine. Without `OPENSSL_DIR`, the crate looks for OpenSSL in the build machine's library directories, and the link picks up that machine's libraries. The crate's build script does not re-run when `OPENSSL_DIR` changes, so after setting it for the first time run `cargo clean -p lbug` for the Android target.
 
 Releases are immutable and every archive carries a build provenance attestation:
 

@@ -57,6 +57,10 @@ cp "$root/.lbug-src/src/include/c_api/lbug.h" "$stage/"
 if [ "$target" = aarch64-linux-android ]; then
   cp "$root/.openssl-android/lib/libssl.a" "$root/.openssl-android/lib/libcrypto.a" "$stage/"
   [ -f "$root/.openssl-android/LICENSE.txt" ] && cp "$root/.openssl-android/LICENSE.txt" "$stage/LICENSES/OpenSSL"
+  # The NDK's CMake toolchain compiles with -g whatever the build type; like
+  # the other targets' archives, this one carries no debug information.
+  strip=$(ls "$ANDROID_NDK_HOME"/toolchains/llvm/prebuilt/*/bin/llvm-strip | head -1)
+  "$strip" --strip-debug "$stage/liblbug.a" "$stage/libssl.a" "$stage/libcrypto.a"
 fi
 
 curl -fsSL "https://raw.githubusercontent.com/LadybugDB/ladybug/v$LBUG_VERSION/LICENSE" -o "$stage/LICENSES/LadybugDB"
@@ -73,7 +77,7 @@ case "$target" in
 esac
 android=null
 if [ "$target" = aarch64-linux-android ]; then
-  android="{\"ndk\": \"$ANDROID_NDK_VERSION\", \"api\": $ANDROID_API, \"stl\": \"c++_shared\"}"
+  android="{\"ndk\": \"$ANDROID_NDK_VERSION\", \"api\": $ANDROID_API, \"stl\": \"c++_shared\", \"openssl_src\": \"$OPENSSL_SRC_VERSION\"}"
 fi
 cat > "$stage/BUILD-INFO.json" <<JSON
 {

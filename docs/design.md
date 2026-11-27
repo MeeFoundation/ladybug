@@ -78,7 +78,7 @@ A release is tagged `v<LadybugDB version>-mee.<n>`, for example `v0.22.1-mee.1`;
 - **Two patches**, both applied by `scripts/assemble-source.sh`, both worth offering upstream:
   - The C API swaps a database's and a connection's handle with `std::atomic_ref`, which the NDK's C++ library lacks; where it is missing, the compiler's own `__atomic_exchange_n` does the same (`scripts/lbug_ndk_atomic_ref.py`).
   - The extensions' CMake writes each archive into the source tree, where one target's build overwrites another's; the patch writes it into the build directory as `libvector_static.a`.
-- **Toolchains:** the Rust toolchain mee-pdn uses (`harness/rust-toolchain.toml`), the NDK version and API level, OpenSSL for Android (built by the `openssl-src` crate, as Rust's `openssl` crate builds it), and the runner images.
+- **Toolchains:** the Rust toolchain mee-pdn uses (`harness/rust-toolchain.toml`), the NDK version and API level, OpenSSL for Android (built by the `openssl-src` crate at the version `pins.env` names, as Rust's `openssl` crate builds it), and the runner images.
 
 ### Built through the `lbug` crate itself
 
@@ -125,7 +125,7 @@ Because the archive arrives already built, nothing in mee-pdn depends on CMake a
 
 ### Android
 
-The `lbug` crate picks an archive by the build machine's system, so a build for Android on Linux would fetch the Linux archive. A build for Android names the Android archive itself: it downloads `liblbug-static-android-arm64.tar.gz`, checks it against the release's `SHA256SUMS`, and sets `LBUG_LIBRARY_DIR` and `LBUG_INCLUDE_DIR` to its directory, which the crate then links in place of any download. An application that builds the engine for Android does this in its own build. mee-pdn's own Android build (`pdn-mobile`) does not link the engine.
+The `lbug` crate picks an archive by the build machine's system, so a build for Android on Linux would fetch the Linux archive. A build for Android names the Android archive itself: it downloads `liblbug-static-android-arm64.tar.gz`, checks it against the release's `SHA256SUMS`, and sets `LBUG_LIBRARY_DIR`, `LBUG_INCLUDE_DIR` and `OPENSSL_DIR` to its directory, which the crate then links in place of any download. `OPENSSL_DIR` matters as much as the other two: without it, the crate adds the build machine's library directories (`/usr/lib/x86_64-linux-gnu` among them) to the link, ahead of the NDK's, and the Android link fails on the build machine's `libc` and `libstdc++`. An application that builds the engine for Android does this in its own build. mee-pdn's own Android build (`pdn-mobile`) does not link the engine.
 
 ### What left mee-pdn
 
