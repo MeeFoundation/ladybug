@@ -1,0 +1,113 @@
+# A tag v<LadybugDB version>-mee.<n> builds LadybugDB with its vector
+# extension for every target below, attests each archive's provenance, and
+# creates a DRAFT release holding them. A person checks the Android archive on
+# a phone and then publishes the draft; with immutable releases turned on for
+# the repository, a published release's assets and tag never change.
+name: Release
+
+on:
+  push:
+    tags: ["v*-mee.*"]
+
+permissions: {}
+
+jobs:
+  build:
+    name: Build ${{ matrix.target }}
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-gnu
+            runner: ubuntu-24.04
+          - target: aarch64-unknown-linux-gnu
+            runner: ubuntu-24.04-arm
+          - target: aarch64-apple-darwin
+            runner: macos-15
+          - target: aarch64-linux-android
+            runner: ubuntu-24.04
+    runs-on: ${{ matrix.runner }}
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: The tag is the one pins.env names
+        run: |
+          . ./pins.env
+          test "$GITHUB_REF_NAME" = "v$LBUG_VERSION-mee.$MEE_RELEASE" || {
+            echo "tag $GITHUB_REF_NAME, pins.env says v$LBUG_VERSION-mee.$MEE_RELEASE"; exit 1; }
+
+      - name: Rust toolchain (harness/rust-toolchain.toml)
+        working-directory: harness
+        run: |
+          rustup show active-toolchain || rustup toolchain install
+          rustup target add ${{ matrix.target }}
+
+      - name: Android NDK and cargo-ndk
+        if: matrix.target == 'aarch64-linux-android'
+        run: |
+          . ./pins.env
+          "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" --install "ndk;$ANDROID_NDK_VERSION" > /dev/null
+          echo "ANDROID_NDK_HOME=$ANDROID_SDK_ROOT/ndk/$ANDROID_NDK_VERSION" >> "$GITHUB_ENV"
+          cargo install cargo-ndk --locked --version 4.1.2
+
+      - name: OpenSSL 3 (macOS)
+        if: runner.os == 'macOS'
+        run: brew list openssl@3 > /dev/null 2>&1 || brew install openssl@3
+
+      - name: Build, test where it runs, and pack
+        run: sh scripts/build.sh ${{ matrix.target }}
+
+      - name: Attest the archive's provenance
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: dist/*.tar.gz
+
+      - name: Hand the archive to the release job
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ${{ matrix.target }}
+          path: dist/*.tar.gz
+          if-no-files-found: error
+
+  release:
+    name: Draft the release
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Collect the archives
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Create the draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          . ./pins.env
+          cd dist
+          sha256sum *.tar.gz > SHA256SUMS
+          {
+            echo "LadybugDB $LBUG_VERSION (the lbug crate's engine) with its vector extension linked in,"
+            echo "ladybugdb/extensions at $EXTENSIONS_COMMIT. Android: NDK $ANDROID_NDK_VERSION, API $ANDROID_API, c++_shared."
+            echo
+            echo "Each archive carries BUILD-INFO.json and LICENSES/. Verify one with:"
+            echo '`gh attestation verify <archive> --repo ${{ github.repository }}`'
+            echo
+            echo '```'
+            cat SHA256SUMS
+            echo '```'
+          } > notes.md
+          gh release create "$GITHUB_REF_NAME" --draft --verify-tag \
+            --title "LadybugDB $LBUG_VERSION with vector ($GITHUB_REF_NAME)" \
+            --notes-file notes.md *.tar.gz SHA256SUMS

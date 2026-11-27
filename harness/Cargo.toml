@@ -1,0 +1,14 @@
+# Builds LadybugDB through the lbug crate, so the archive a release carries is
+# built with the CMake definitions and compiler flags a source build of the
+# crate uses. Its test checks the vector extension is linked in.
+[package]
+name = "lbug-harness"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+# The version pins.env names; scripts/build.sh checks they agree.
+lbug = "=0.22.1"
+
+[workspace]

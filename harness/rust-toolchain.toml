@@ -1,0 +1,5 @@
+# The toolchain mee-pdn builds with (its rust-toolchain.toml).
+[toolchain]
+channel = "1.99.1"
+profile = "minimal"
+targets = ["aarch64-linux-android"]
